@@ -34,7 +34,7 @@ sudo postmap /etc/postfix/virtual
 sudo systemctl restart postfix
 
 # Buat skrip Python untuk menangani email yang masuk
-sudo bash -c "cat <<'EOL' > /home/$USER/handle_email.py
+sudo bash -c "cat <<'EOL' > /usr/bin/handle_email.py
 import sys
 import email
 import os
@@ -57,11 +57,11 @@ if __name__ == "__main__":
 EOL"
 
 # Berikan izin eksekusi pada skrip
-chmod +x /home/$USER/handle_email.py
+sudo chmod +x /usr/bin/handle_email.py
 
 # Edit file aliases
 sudo bash -c "cat <<EOL >> /etc/aliases
-test.dot-store.x10.bz: \"/home/$USER/handle_email.py\"
+test.dot-store.x10.bz: \"/usr/bin/handle_email.py\"
 EOL"
 
 # Reload aliases
@@ -71,7 +71,7 @@ sudo newaliases
 pip3 install Flask
 
 # Buat file Flask app.py
-sudo bash -c "cat <<'EOL' > /home/$USER/app.py
+sudo bash -c "cat <<'EOL' > /usr/bin/app.py
 from flask import Flask, request, jsonify
 import random
 import string
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 EOL"
 
 # Buat file HTML index.html
-sudo bash -c "cat <<'EOL' > /home/$USER/index.html
+sudo bash -c "cat <<'EOL' > /usr/bin/index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -152,7 +152,7 @@ sudo bash -c "cat <<'EOL' > /home/$USER/index.html
 EOL"
 
 # Instruksi untuk menjalankan Flask app
-echo "Gunakan 'python3 /home/$USER/app.py' untuk menjalankan server Flask."
+echo "Gunakan 'python3 /usr/bin/app.py' untuk menjalankan server Flask."
 echo "Buka browser dan akses 'http://localhost:5000' untuk melihat aplikasi Temp Mail."
 
 echo "Selesai!"
