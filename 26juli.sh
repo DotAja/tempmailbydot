@@ -1,8 +1,25 @@
 #!/bin/bash
 
-# Update dan instalasi paket yang dibutuhkan
+# Update dan instalasi paket dasar
 sudo apt-get update
-sudo apt-get install -y postfix dovecot-imapd dovecot-pop3d nodejs npm
+sudo apt-get install -y curl build-essential
+
+# Instalasi Node Version Manager (nvm)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.4/install.sh | bash
+
+# Muat nvm
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Instal Node.js versi LTS terbaru
+nvm install --lts
+nvm use --lts
+
+# Perbarui npm
+npm install -g npm
+
+# Instalasi paket yang dibutuhkan
+sudo apt-get install -y postfix dovecot-imapd dovecot-pop3d
 
 # Konfigurasi Postfix
 sudo postconf -e 'myhostname = namaku-dot.x10.mx'
@@ -57,7 +74,7 @@ mkdir -p ~/fake-email-service
 cd ~/fake-email-service
 
 # Buat package.json untuk proyek Node.js
-sudo tee package.json > /dev/null <<EOT
+cat <<EOT > package.json
 {
   "name": "fake-email-service",
   "version": "1.0.0",
@@ -65,7 +82,7 @@ sudo tee package.json > /dev/null <<EOT
   "main": "app.js",
   "dependencies": {
     "express": "^4.17.1",
-    "mailparser": "^2.9.1",
+    "mailparser": "^2.8.1",
     "nodemailer": "^6.6.3",
     "imap": "^0.8.19"
   },
@@ -81,7 +98,7 @@ EOT
 npm install
 
 # Buat file app.js untuk aplikasi web
-sudo tee app.js > /dev/null <<EOT
+cat <<EOT > app.js
 const express = require('express');
 const Imap = require('imap');
 const { MailParser } = require('mailparser');
@@ -149,7 +166,7 @@ app.listen(3000, () => {
 });
 EOT
 
-# Jalankan aplikasi web
-npm start &
+# Jalankan aplikasi web di latar belakang
+nohup npm start &
 
 echo "Layanan email sementara telah berhasil diatur dan berjalan di port 3000."
