@@ -27,15 +27,13 @@ sudo sed -i 's/#protocols =/protocols = imap pop3 lmtp/' /etc/dovecot/dovecot.co
 sudo sed -i 's/#disable_plaintext_auth = yes/disable_plaintext_auth = no/' /etc/dovecot/conf.d/10-auth.conf
 sudo sed -i 's/mail_location =/mail_location = maildir:~\/Maildir/' /etc/dovecot/conf.d/10-mail.conf
 
-cat <<EOT | sudo tee -a /etc/dovecot/conf.d/10-master.conf
-service auth {
+echo "service auth {
   unix_listener /var/spool/postfix/private/auth {
     mode = 0660
     user = postfix
     group = postfix
   }
-}
-EOT
+}" | sudo tee -a /etc/dovecot/conf.d/10-master.conf
 
 sudo systemctl restart dovecot
 
@@ -43,8 +41,7 @@ sudo systemctl restart dovecot
 sudo apt install -y nginx php-fpm php-imap
 
 # Konfigurasi Nginx
-cat <<EOT | sudo tee /etc/nginx/sites-available/default
-server {
+echo "server {
     listen 80;
     server_name namaku-dot.x10.mx;
 
@@ -65,8 +62,7 @@ server {
     location ~ /\.ht {
         deny all;
     }
-}
-EOT
+}" | sudo tee /etc/nginx/sites-available/default
 
 sudo systemctl restart nginx
 
@@ -74,8 +70,7 @@ sudo systemctl restart nginx
 sudo mkdir -p /var/www/html/api
 
 # Buat skrip PHP untuk generate email acak
-cat <<EOT | sudo tee /var/www/html/api/generate.php
-<?php
+echo "<?php
 function generateRandomEmail(\$domain) {
     \$characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
     \$email = '';
@@ -89,12 +84,10 @@ function generateRandomEmail(\$domain) {
 \$randomEmail = generateRandomEmail(\$domain);
 
 echo json_encode(['email' => \$randomEmail]);
-?>
-EOT
+?>" | sudo tee /var/www/html/api/generate.php
 
 # Buat skrip PHP untuk menerima email
-cat <<EOT | sudo tee /var/www/html/api/receive.php
-<?php
+echo "<?php
 if (!isset(\$_GET['email'])) {
     echo json_encode(['error' => 'Email parameter is required']);
     exit;
@@ -103,7 +96,7 @@ if (!isset(\$_GET['email'])) {
 \$email = \$_GET['email'];
 \$mailbox = imap_open('{localhost:143/imap}INBOX', 'dotaja', 'dotaja123') or die('Cannot connect: ' . imap_last_error());
 
-\$emails = imap_search(\$mailbox, 'TO "' . \$email . '"');
+\$emails = imap_search(\$mailbox, 'TO \"' . \$email . '\"');
 \$response = [];
 
 if (\$emails) {
@@ -122,23 +115,21 @@ if (\$emails) {
 
 imap_close(\$mailbox);
 echo json_encode(\$response);
-?>
-EOT
+?>" | sudo tee /var/www/html/api/receive.php
 
 # Buat halaman index
-cat <<EOT | sudo tee /var/www/html/index.php
-<!DOCTYPE html>
-<html lang="en">
+echo "<!DOCTYPE html>
+<html lang='en'>
 <head>
-    <meta charset="UTF-8">
+    <meta charset='UTF-8'>
     <title>Temporary Email Service</title>
 </head>
 <body>
     <h1>Temporary Email Service</h1>
-    <button onclick="generateEmail()">Generate Random Email</button>
-    <p id="email"></p>
-    <button onclick="checkEmail()">Check Emails</button>
-    <div id="emails"></div>
+    <button onclick='generateEmail()'>Generate Random Email</button>
+    <p id='email'></p>
+    <button onclick='checkEmail()'>Check Emails</button>
+    <div id='emails'></div>
 
     <script>
         function generateEmail() {
@@ -169,9 +160,9 @@ cat <<EOT | sudo tee /var/www/html/index.php
                     } else {
                         data.forEach(email => {
                             const emailDiv = document.createElement('div');
-                            emailDiv.innerHTML = `<strong>From:</strong> ${email.from}<br>
-                                                  <strong>Subject:</strong> ${email.subject}<br>
-                                                  <strong>Message:</strong> ${email.message}<hr>`;
+                            emailDiv.innerHTML = '<strong>From:</strong> ' + email.from + '<br>' +
+                                                  '<strong>Subject:</strong> ' + email.subject + '<br>' +
+                                                  '<strong>Message:</strong> ' + email.message + '<hr>';
                             emailContainer.appendChild(emailDiv);
                         });
                     }
@@ -179,7 +170,6 @@ cat <<EOT | sudo tee /var/www/html/index.php
         }
     </script>
 </body>
-</html>
-EOT
+</html>" | sudo tee /var/www/html/index.php
 
 echo "Setup selesai. Harap perbarui 'yourdomain.com' dan 'username/password' di file konfigurasi yang sesuai."
