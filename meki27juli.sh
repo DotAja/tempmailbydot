@@ -1,16 +1,13 @@
 #!/bin/bash
 
 # Update dan upgrade sistem
-echo "Updating and upgrading the system..."
 sudo apt update
 sudo apt upgrade -y
 
 # Install Postfix dan Dovecot
-echo "Installing Postfix and Dovecot..."
 sudo apt install -y postfix dovecot-imapd dovecot-pop3d
 
 # Konfigurasi Postfix
-echo "Configuring Postfix..."
 sudo tee /etc/postfix/main.cf > /dev/null <<EOL
 myhostname = namaku-dot.x10.mx
 mydomain = namaku-dot.x10.mx
@@ -23,7 +20,6 @@ EOL
 sudo systemctl restart postfix
 
 # Konfigurasi Dovecot
-echo "Configuring Dovecot..."
 sudo tee /etc/dovecot/dovecot.conf > /dev/null <<EOL
 protocols = imap pop3
 EOL
@@ -34,6 +30,13 @@ EOL
 
 sudo tee /etc/dovecot/conf.d/10-auth.conf > /dev/null <<EOL
 disable_plaintext_auth = no
+auth_mechanisms = plain login
+passdb {
+  driver = pam
+}
+userdb {
+  driver = passwd
+}
 EOL
 
 sudo tee /etc/dovecot/conf.d/10-master.conf > /dev/null <<EOL
@@ -53,11 +56,9 @@ EOL
 sudo systemctl restart dovecot
 
 # Install Python3, pip, dan virtualenv
-echo "Installing Python3, pip, and virtualenv..."
 sudo apt install -y python3-pip python3-venv
 
 # Setup virtual environment dan instal Flask
-echo "Setting up virtual environment and installing Flask..."
 mkdir -p ~/mail_api
 cd ~/mail_api
 python3 -m venv venv
@@ -66,11 +67,8 @@ pip install flask
 
 # Buat aplikasi Flask
 cat << 'EOF' > ~/mail_api/app.py
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 import os
-import email
-from email.parser import BytesParser
-from email.policy import default
 
 app = Flask(__name__)
 
@@ -78,25 +76,43 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-# Endpoint untuk mendapatkan daftar email
+@app.route('/create_email', methods=['POST'])
+def create_email():
+    username = request.form['username']
+    home_dir = f'/home/{username}'
+    
+    try:
+        # Buat pengguna sistem baru dengan direktori home
+        os.system(f'sudo useradd -m -d {home_dir} {username}')
+        
+        return redirect(url_for('index'))
+    except Exception as e:
+        return str(e), 500
+
 @app.route('/get_emails', methods=['GET'])
 def get_emails():
     user = request.args.get('user')
-    maildir = f'/home/{user}/Maildir'
+    maildir = f'/home/{user}/Maildir/new'
     emails = []
+
+    if not os.path.exists(maildir):
+        return jsonify({"error": "Maildir does not exist"}), 404
 
     for root, dirs, files in os.walk(maildir):
         for file in files:
             if file.startswith('.'):
                 continue
-            with open(os.path.join(root, file), 'rb') as f:
-                msg = BytesParser(policy=default).parse(f)
-                emails.append({
-                    'subject': msg['subject'],
-                    'from': msg['from'],
-                    'date': msg['date'],
-                    'body': msg.get_payload(decode=True).decode(errors='ignore')
-                })
+            try:
+                with open(os.path.join(root, file), 'rb') as f:
+                    msg = email.message_from_binary_file(f)
+                    emails.append({
+                        'subject': msg['subject'],
+                        'from': msg['from'],
+                        'date': msg['date'],
+                        'body': msg.get_payload(decode=True).decode(errors='ignore')
+                    })
+            except Exception as e:
+                app.logger.error(f"Failed to read email {file}: {e}")
 
     return jsonify(emails), 200
 
@@ -124,6 +140,12 @@ cat << 'EOF' > ~/mail_api/templates/index.html
 <body>
     <div class="container">
         <h1>Temporary Email</h1>
+        <h2>Create New Email</h2>
+        <form method="post" action="/create_email">
+            <input type="text" name="username" placeholder="Enter username" required/>
+            <button type="submit">Create Email</button>
+        </form>
+        <h2>Check Emails</h2>
         <input type="text" id="username" placeholder="Enter username" />
         <button onclick="fetchEmails()">Fetch Emails</button>
         <table id="emailsTable">
@@ -162,7 +184,6 @@ cat << 'EOF' > ~/mail_api/templates/index.html
 EOF
 
 # Jalankan API server di latar belakang
-echo "Starting API server..."
 nohup ~/mail_api/venv/bin/python ~/mail_api/app.py &
 
 echo "Setup complete. Mail server and API server are up and running. Access the web interface at http://<your-server-ip>:5000"
