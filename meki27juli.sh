@@ -52,14 +52,19 @@ EOL
 
 sudo systemctl restart dovecot
 
-# Install Python3 dan Flask
-echo "Installing Python3, pip, and Flask..."
-sudo apt install -y python3-pip
-pip3 install flask
+# Install Python3, pip, dan virtualenv
+echo "Installing Python3, pip, and virtualenv..."
+sudo apt install -y python3-pip python3-venv
 
-# Setup API server dan antarmuka web
-echo "Setting up API server and web interface..."
+# Setup virtual environment dan instal Flask
+echo "Setting up virtual environment and installing Flask..."
 mkdir -p ~/mail_api
+cd ~/mail_api
+python3 -m venv venv
+source venv/bin/activate
+pip install flask
+
+# Buat aplikasi Flask
 cat << 'EOF' > ~/mail_api/app.py
 from flask import Flask, request, jsonify, render_template
 import os
@@ -158,6 +163,6 @@ EOF
 
 # Jalankan API server di latar belakang
 echo "Starting API server..."
-nohup python3 ~/mail_api/app.py &
+nohup ~/mail_api/venv/bin/python ~/mail_api/app.py &
 
 echo "Setup complete. Mail server and API server are up and running. Access the web interface at http://<your-server-ip>:5000"
