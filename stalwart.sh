@@ -1,22 +1,21 @@
 #!/bin/bash
 
 # Update and install dependencies
-sudo apt update
-sudo apt upgrade -y
-sudo apt install -y build-essential libssl-dev pkg-config nodejs npm screen
+apt update
+apt upgrade -y
+apt install -y build-essential libssl-dev pkg-config nodejs npm screen
 
 # Download and install Stalwart Mail
-wget https://stalwart.art/releases/stalwart-mail-latest-linux-x86_64.tar.gz
-tar -xzf stalwart-mail-latest-linux-x86_64.tar.gz
-sudo mv stalwart-mail /usr/local/bin/
+wget https://github.com/stalwartlabs/mail-server/releases/download/v0.8.3/stalwart-mail-x86_64-unknown-linux-gnu.tar.gz
+tar -xzf stalwart-mail-x86_64-unknown-linux-gnu.tar.gz
+mv stalwart-mail /usr/bin/
 
 # Create configuration and data directories
-sudo mkdir /etc/stalwart
-sudo mkdir -p /var/lib/stalwart/mail
-sudo chown -R $USER:$USER /var/lib/stalwart/mail
+mkdir /etc/stalwart
+mkdir -p /var/lib/stalwart/mail
 
 # Create Stalwart configuration file
-cat <<EOL | sudo tee /etc/stalwart/stalwart.toml
+cat <<EOL > /etc/stalwart/stalwart.toml
 [server]
 hostname = "mail.namaku-dot.x10.mx"
 listen = ["0.0.0.0:25", "0.0.0.0:587"]
@@ -31,7 +30,8 @@ listen = ["0.0.0.0:25", "0.0.0.0:587"]
 path = "/var/lib/stalwart/mail"
 EOL
 
-# Create project directory and initialize Node.js project
+# Create project directory and initialize Node.js project in /usr/bin/
+cd /usr/bin/
 mkdir stalwart-api
 cd stalwart-api
 npm init -y
@@ -52,7 +52,7 @@ app.use(express.static('public'));
 app.post('/create-email', (req, res) => {
     const email = \`temp_\${Date.now()}@namaku-dot.x10.mx\`;
     const password = Math.random().toString(36).slice(-8);  // Generate random password
-    const command = \`sudo stalwart adduser --email \${email} --password \${password}\`;
+    const command = \`stalwart adduser --email \${email} --password \${password}\`;
 
     exec(command, (error, stdout, stderr) => {
         if (error) {
@@ -205,14 +205,10 @@ async function checkInbox(email) {
 }
 EOL
 
-# Configure sudo to allow running Stalwart without password
-echo "$USER ALL=(ALL) NOPASSWD: /usr/local/bin/stalwart" | sudo tee /etc/sudoers.d/$USER-stalwart
-
 # Start Stalwart Mail server with screen
-screen -dmS stalwart-mail /usr/local/bin/stalwartd -c /etc/stalwart/stalwart.toml
+screen -dmS stalwart-mail /usr/bin/stalwartd -c /etc/stalwart/stalwart.toml
 
 # Start Node.js API server with screen
-cd ~/stalwart-api
-screen -dmS node-api node index.js
+screen -dmS node-api node /usr/bin/stalwart-api/index.js
 
 echo "Setup complete. Stalwart Mail and Node.js API are running in screen sessions."
