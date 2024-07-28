@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Update system
-sudo apt update && sudo apt upgrade -y
+apt update && apt upgrade -y
 
-# Install Postfix and Dovecot
-sudo apt install -y postfix dovecot-core dovecot-imapd apache2 php libapache2-mod-php
+# Install Postfix dan Dovecot
+apt install -y postfix dovecot-core dovecot-imapd apache2 php libapache2-mod-php
 
-# Configure Postfix
-sudo tee /etc/postfix/main.cf > /dev/null <<EOF
+# Konfigurasi Postfix
+tee /etc/postfix/main.cf > /dev/null <<EOF
 myhostname = mail-dot.x10.mx
 mydomain = x10.mx
 myorigin = /etc/mailname
@@ -21,26 +21,26 @@ inet_protocols = all
 virtual_alias_maps = hash:/etc/postfix/virtual
 EOF
 
-sudo tee /etc/postfix/virtual > /dev/null <<EOF
+tee /etc/postfix/virtual > /dev/null <<EOF
 @mail-dot.x10.mx emailuser
 EOF
 
-sudo postmap /etc/postfix/virtual
+postmap /etc/postfix/virtual
 
-# Configure Dovecot
-sudo tee /etc/dovecot/dovecot.conf > /dev/null <<EOF
+# Konfigurasi Dovecot
+tee /etc/dovecot/dovecot.conf > /dev/null <<EOF
 protocols = imap
 EOF
 
-sudo tee /etc/dovecot/conf.d/10-mail.conf > /dev/null <<EOF
+tee /etc/dovecot/conf.d/10-mail.conf > /dev/null <<EOF
 mail_location = maildir:~/Maildir
 EOF
 
-sudo tee /etc/dovecot/conf.d/10-auth.conf > /dev/null <<EOF
+tee /etc/dovecot/conf.d/10-auth.conf > /dev/null <<EOF
 disable_plaintext_auth = no
 EOF
 
-sudo tee /etc/dovecot/conf.d/10-master.conf > /dev/null <<EOF
+tee /etc/dovecot/conf.d/10-master.conf > /dev/null <<EOF
 service auth {
   unix_listener /var/spool/postfix/private/auth {
     mode = 0660
@@ -50,22 +50,22 @@ service auth {
 }
 EOF
 
-# Add mail user
-sudo useradd -m emailuser -s /bin/false
-echo "emailuser:password" | sudo chpasswd
+# Tambah pengguna mail baru
+useradd -m emailuser -s /bin/false
+echo "emailuser:password" | chpasswd
 
-# Restart services
-sudo systemctl restart postfix
-sudo systemctl restart dovecot
+# Mulai ulang layanan
+systemctl restart postfix
+systemctl restart dovecot
 
-# Install dependencies for web interface
-sudo apt install -y git curl
+# Instal dependensi untuk antarmuka web
+apt install -y git curl
 
-# Create web interface directory
-sudo mkdir -p /var/www/html/tempemail
+# Buat direktori antarmuka web
+mkdir -p /var/www/html/tempemail
 
-# Create web interface PHP script
-sudo tee /var/www/html/tempemail/index.php > /dev/null <<EOF
+# Buat skrip PHP untuk antarmuka web
+tee /var/www/html/tempemail/index.php > /dev/null <<EOF
 <?php
 function generateRandomEmail(\$domain) {
     \$characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -86,7 +86,7 @@ if (isset(\$_POST['generate'])) {
 ?>
 EOF
 
-sudo tee /var/www/html/tempemail/messages.php > /dev/null <<EOF
+tee /var/www/html/tempemail/messages.php > /dev/null <<EOF
 <?php
 if (isset(\$_GET['email'])) {
     \$email = \$_GET['email'];
@@ -111,10 +111,10 @@ if (isset(\$_GET['email'])) {
 ?>
 EOF
 
-# Set permissions
-sudo chown -R www-data:www-data /var/www/html/tempemail
+# Setel izin
+chown -R www-data:www-data /var/www/html/tempemail
 
-# Restart Apache
-sudo systemctl restart apache2
+# Mulai ulang Apache
+systemctl restart apache2
 
-echo "Setup completed. Access your temporary email service at http://your-server-ip/tempemail"
+echo "Setup selesai. Akses layanan email sementara Anda di http://your-server-ip/tempemail"
